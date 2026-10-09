@@ -11,5 +11,3 @@ Starting pitches and a metronome for an a cappella choir, built to run on stage 
 - Metronome (visual or audible) with large tap targets for adjusting tempo mid-performance.
 
 Single self-contained HTML file in vanilla JS and the Web Audio API, with no build step and no dependencies. To use it offline, save `setlist.html` and open it in a browser.
-
-More about the project: https://freezes.com/projects/setlist/
