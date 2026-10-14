@@ -10,4 +10,20 @@ Starting pitches and a metronome for an a cappella choir, built to run on stage 
 - Rehearsal Mode lays out the full diatonic scale for a song's key.
 - Metronome (visual or audible) with large tap targets for adjusting tempo mid-performance.
 
-Single self-contained HTML file in vanilla JS and the Web Audio API, with no build step and no dependencies. To use it offline, save `setlist.html` and open it in a browser.
+Single self-contained HTML file in vanilla JS and the Web Audio API, with no build step and no dependencies.
+
+## Install on iPhone / iPad (works offline)
+
+1. Open the live app in Safari while online.
+2. Tap Share → **Add to Home Screen**.
+3. Launch it from the home-screen icon once while still online. When "✓ offline ready" appears next to the version number, it's fully cached and will run with no connection.
+
+On iOS 16.4+ the pitches play even with the Ring/Silent switch on.
+
+Note: on iOS the home-screen app keeps its own storage, separate from Safari, so a setlist edited in Safari won't appear in the installed app (and vice versa). Copy it across with the Edit → CSV tab.
+
+You can still save `setlist.html` and open it directly as a file; it just won't get the home-screen install or auto-updates that way.
+
+## Releasing a new version
+
+Bump `CACHE_VERSION` in `sw.js` (and the version tag in `setlist.html`). Installed copies download the new version in the background and show an **update ready ↻** button; nothing switches over until someone taps it or fully closes and reopens the app, so an update never lands mid-concert.

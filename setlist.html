@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Setlist Pitch Pipe (Offline iPad)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Setlist Pitch Pipe</title>
+  <!-- Installable PWA: Add to Home Screen launches full-screen and works offline -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Setlist">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <style>
     :root {
       --bg: #0f172a;
@@ -116,6 +125,28 @@
       letter-spacing: 0.5px;
       margin-left: 6px;
     }
+    /* PWA status: only shown once there's something to say */
+    .offline-tag {
+      font-size: 0.65rem;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      margin-left: 8px;
+      color: var(--accent);
+    }
+    .offline-tag[hidden] { display: none; }
+    .update-link {
+      font-size: 0.65rem;
+      font-weight: 600;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--purple);
+      background: transparent;
+      color: var(--purple);
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .update-link[hidden] { display: none; }
     .switch {
       position: relative;
       display: inline-block;
@@ -385,7 +416,7 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.0</span></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.1</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
   <button type="button" id="editSetlistBtn" class="btn-edit-link" onclick="showEditView()">&#9998; Edit Setlist</button>
 
@@ -1018,12 +1049,45 @@
     await Promise.all([...roots].map(r => getBase64AudioBuffer(r)));
   }
 
+  // iOS: Web Audio is in the "ambient" audio-session category by default, which
+  // the Ring/Silent switch mutes. 'playback' makes it behave like <audio> and
+  // play regardless of the switch (Safari 16.4+; feature-detected).
+  function setPlaybackAudioSession() {
+    if (!('audioSession' in navigator)) return;
+    try {
+      navigator.audioSession.type = 'playback';
+    } catch (e) {
+      console.warn('*** audioSession.type assignment failed', e);
+    }
+  }
+
+  // WebKit bug workaround: after a silent GPU/media-process relaunch (often
+  // after the app has been backgrounded), the tab's session category can be
+  // stranded in Ambient while audioSession.type still *reports* 'playback'.
+  // Assigning the same value is a no-op, so toggle it away and back.
+  function reassertPlaybackAudioSession() {
+    if (!('audioSession' in navigator)) return;
+    try {
+      navigator.audioSession.type = 'auto';
+    } catch (e) { /* ignore */ }
+    setPlaybackAudioSession();
+  }
+
+  setPlaybackAudioSession();
+  window.addEventListener('pageshow', reassertPlaybackAudioSession);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reassertPlaybackAudioSession();
+  });
+
   function initAudio() {
+    setPlaybackAudioSession();
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
+    // iOS uses 'interrupted' (not 'suspended') after a phone call, Siri, or
+    // backgrounding; resume either way.
+    if (audioCtx.state !== 'running') {
+      audioCtx.resume().catch(e => console.warn('*** audioCtx.resume failed', e));
     }
   }
 
@@ -1627,6 +1691,55 @@
   });
 </script>
 
+
+<!-- PWA: offline cache via service worker (http/https only; file:// and
+     Textastic previews just skip this and run as before) -->
+<script>
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+
+  const offlineTag = document.getElementById('offlineTag');
+  const updateLink = document.getElementById('updateLink');
+  let reloading = false;
+
+  function showUpdate(worker) {
+    updateLink.hidden = false;
+    updateLink.onclick = () => worker.postMessage('SKIP_WAITING');
+  }
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // Only reload when the user asked for the update; never mid-song on its own.
+    if (reloading || updateLink.hidden) return;
+    reloading = true;
+    location.reload();
+  });
+
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    navigator.serviceWorker.ready.then(() => { offlineTag.hidden = false; });
+
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener('statechange', () => {
+        // First install: nothing to replace. Later installs: offer the update.
+        if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdate(w);
+      });
+    });
+
+    // Check for a new version whenever the app comes back to the foreground.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  }).catch(e => console.warn('*** Service worker registration failed', e));
+
+  // Ask the browser not to evict the cache/localStorage under storage pressure.
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
+})();
+</script>
 
 <!-- DFF site: corner nav back to the main site -->
 <script>window.SITE_ROOT = "../../../"; window.DFF_PROJECT_ID = "setlist";</script>
