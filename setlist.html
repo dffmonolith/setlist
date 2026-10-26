@@ -184,27 +184,80 @@
       text-align: center;
       margin-bottom: 10px;
     }
+    /* v2.5: Rehearsal Mode keyboard. One octave (C to B) per row, highest
+       octave on top and lowest at the bottom, like a choir score. Keys in the
+       song's key are bright and labelled; the rest are dimmed but still play.
+       The tonic is outlined; dots mark the song's starting pitches. */
     .rehearsal-grid {
       display: flex;
       flex-direction: column;
+      gap: 10px;
+    }
+    .kb-row {
+      position: relative;
+      display: flex;
+      height: clamp(96px, 24vw, 132px);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .kb-key {
+      position: relative;
+      padding: 0 0 8px;
+      border-radius: 0 0 6px 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      line-height: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
       gap: 6px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.08s ease;
     }
-    .rehearsal-row {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
+    .kb-key:active { transform: none; }
+    .kb-white {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 100%;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #0f172a;
     }
-    .btn-grid-note {
-      background: #334155;
-      color: #fff;
-      border: 1px solid #475569;
-      padding: 10px 2px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      border-radius: 6px;
+    .kb-white.is-out { background: #64748b; }
+    .kb-black {
+      position: absolute;
+      top: 0;
+      height: 60%;
+      z-index: 2;
+      background: #475569;
+      color: #f8fafc;
+      border: 1px solid #0f172a;
+      font-size: 0.68rem;
+      padding-bottom: 6px;
     }
-    .btn-grid-note:hover { background: #475569; }
-    .btn-grid-note.is-tonic { border-color: var(--accent); color: var(--accent); }
+    .kb-black.is-out { background: #0b1120; }
+    .kb-key.is-tonic { box-shadow: inset 0 0 0 3px var(--accent); }
+    .kb-key.is-playing { background: var(--accent); color: #0f172a; }
+    .kb-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--purple);
+      box-shadow: 0 0 0 2px rgba(15,23,42,0.35);
+      flex: 0 0 auto;
+    }
+    .kb-black .kb-dot { width: 9px; height: 9px; }
+    .rehearsal-played {
+      min-height: 1.2em;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .rehearsal-played b { color: var(--accent); }
     .btn-edit-link {
       display: block;
       margin: -6px auto 14px;
@@ -216,6 +269,41 @@
       padding: 4px 8px;
     }
     .btn-edit-link:hover { text-decoration: underline; }
+    /* v2.4: Edit shares the Setlist line; Play Chord and Stop side by side */
+    .song-row .setlist-select { font-size: 1rem; font-weight: 600; }
+    .btn-edit-inline {
+      width: auto;
+      padding: 0 14px;
+      font-size: 0.95rem;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .play-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .btn-play {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 68px;
+      margin: 0;
+      padding: 10px 6px;
+      font-size: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+    }
+    .btn-label { white-space: nowrap; }
+    .btn-sub {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      opacity: 0.75;
+      margin-top: 3px;
+    }
     /* v2.2: named setlists — picker on the perform view, manage row in the editor */
     .setlist-select { font-weight: 600; }
     .setlist-manage {
@@ -430,13 +518,15 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.3</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.5</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
-  <button type="button" id="editSetlistBtn" class="btn-edit-link" onclick="showEditView()">&#9998; Edit Setlist</button>
 
   <div id="performView">
   <label for="setlistSelect">Setlist</label>
-  <select id="setlistSelect" class="setlist-select" onchange="switchSetlist(this.value)"></select>
+  <div class="song-row">
+    <select id="setlistSelect" class="setlist-select" onchange="switchSetlist(this.value)"></select>
+    <button type="button" id="editSetlistBtn" class="btn-nav btn-edit-inline" onclick="showEditView()" aria-label="Edit setlists">&#9998; Edit</button>
+  </div>
 
   <label for="songSelect">Select Song</label>
   <div class="song-row">
@@ -448,8 +538,10 @@
   <label>Individual Pitches</label>
   <div id="pitchButtons" class="pitch-buttons"></div>
   
-  <button class="btn-main" onclick="rollChord()">Play Rolled Chord (Bottom Up)</button>
-  <button class="btn-stop" onclick="stopAudio()">Stop</button>
+  <div class="play-row">
+    <button type="button" class="btn-main btn-play" onclick="rollChord()"><span class="btn-label">&#9654; Play Chord</span><span class="btn-sub">rolled, bottom up</span></button>
+    <button type="button" class="btn-stop btn-play" onclick="stopAudio()">&#9632; Stop</button>
+  </div>
 
   <hr style="border-color: #334155; margin: 20px 0;">
 
@@ -505,6 +597,7 @@
   <div id="rehearsalSection" class="rehearsal-section" style="display:none;">
     <div id="rehearsalNote" class="rehearsal-note"></div>
     <div id="rehearsalGrid" class="rehearsal-grid"></div>
+    <div id="rehearsalPlayed" class="rehearsal-played" aria-live="polite"></div>
   </div>
   </div>
 
@@ -567,9 +660,10 @@
 
 <script>
   // CSV Format: "Title | Key | Pitch1, Pitch2, ... | BPM"
-  // Key is the song's starting key (e.g. "G", "Gm", "Eb", "F#m") — used only to
-  // build the diatonic Rehearsal Mode note grid. Leave the key blank
-  // ("Title | | Pitches | BPM") to skip the grid for a song.
+  // Key is the song's starting key (e.g. "G", "Gm", "Eb", "F#m") — used to
+  // spell the pitches and to light up the key's notes on the Rehearsal Mode
+  // keyboard. Leave the key blank ("Title | | Pitches | BPM") and the
+  // keyboard shows every key alike.
   // BPM is an optional tempo (30–240) that turns on the on-screen/aural
   // Metronome for that song. Leave it blank ("Title | Key | Pitches | ") or
   // omit the field entirely to leave the Metronome off for that song.
@@ -854,42 +948,104 @@
     return Math.floor(midi / 12) - 1;
   }
 
-  // Builds one row of note objects (name + hz) per tonic-to-tonic octave
-  // band spanned by `pitches`, using only the diatonic notes of `keyStr`.
-  function buildRehearsalRows(keyStr, pitches) {
-    const scaleNames = getDiatonicScaleNames(keyStr);
-    if (!scaleNames || !pitches.length) return [];
+  // ---- v2.5: Rehearsal Mode keyboard model ----
+  // Three octaves, C to B each, centered on the song's starting pitches
+  // (DFF: "center on the starting pitches"). Pitches spanning more than
+  // three octaves get as many rows as they need. Kept to octaves 2-6, the
+  // range the embedded piano samples cover cleanly.
+  const KB_MIN_OCTAVE = 2;
+  const KB_MAX_OCTAVE = 6;
+  const KB_ROWS = 3;
+  const BLACK_PCS = [1, 3, 6, 8, 10];
+  // Spellings for notes outside the key (and for keyless songs): sharps in
+  // sharp keys, flats in flat keys, the usual mix otherwise.
+  const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const MIXED_NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
 
-    const parsed = parseKeyName(keyStr);
-    const tonicPC = pitchClassOf(parsed.letter, parsed.acc);
-    const offsets = scaleNames.map(n => {
-      const m = n.match(/^([A-G])(#|b)?$/);
-      return ((pitchClassOf(m[1], m[2] || '') - tonicPC) % 12 + 12) % 12;
-    });
+  function pitchNameToMidi(name) {
+    const m = (name || '').match(/^([A-G])(#|b)?(-?\d+)$/);
+    if (!m) return null;
+    return toMidi(m[1], m[2] || '', parseInt(m[3], 10));
+  }
 
-    // Figure out which pitches (given as e.g. "Bb4") fall in which tonic band.
-    const bands = pitches.map(p => {
-      const m = p.name.match(/^([A-G])(#|b)?(-?\d+)$/);
-      if (!m) return null;
-      const midi = toMidi(m[1], m[2] || '', parseInt(m[3], 10));
-      return Math.floor((midi - tonicPC) / 12);
-    }).filter(b => b !== null);
-    if (!bands.length) return [];
-
-    const minBand = Math.min(...bands);
-    const maxBand = Math.max(...bands);
-    const rows = [];
-    for (let b = minBand; b <= maxBand; b++) {
-      const bandTonicMidi = tonicPC + 12 * b;
-      const row = scaleNames.map((name, i) => {
-        const midi = bandTonicMidi + offsets[i];
-        const octave = midiToOctave(midi);
-        const noteStr = `${name}${octave}`;
-        return { name: noteStr, hz: noteToHz(noteStr) };
-      });
-      rows.push(row);
+  // Picks the first octave of the window: every starting pitch inside it,
+  // and the window's middle as close as possible to the middle of the
+  // starting pitches.
+  function keyboardOctaves(pitches) {
+    const midis = pitches.map(p => pitchNameToMidi(p.name)).filter(m => m !== null);
+    if (!midis.length) return [3, 4, 5];
+    const lo = Math.min(...midis);
+    const hi = Math.max(...midis);
+    const loOct = Math.max(KB_MIN_OCTAVE, midiToOctave(lo));
+    const hiOct = Math.min(KB_MAX_OCTAVE, midiToOctave(hi));
+    const span = hiOct - loOct + 1;
+    const rows = Math.max(KB_ROWS, span);
+    const center = (lo + hi) / 2;
+    let best = loOct;
+    let bestDist = Infinity;
+    for (let first = hiOct - rows + 1; first <= loOct; first++) {
+      if (first < KB_MIN_OCTAVE || first + rows - 1 > KB_MAX_OCTAVE) continue;
+      const mid = (first + 1) * 12 + rows * 6; // middle of the window, in midi
+      const dist = Math.abs(mid - center);
+      if (dist < bestDist) { best = first; bestDist = dist; }
     }
-    return rows;
+    if (bestDist === Infinity) best = Math.min(Math.max(loOct, KB_MIN_OCTAVE), KB_MAX_OCTAVE - rows + 1);
+    const octaves = [];
+    for (let o = best; o < best + rows; o++) octaves.push(o);
+    return octaves;
+  }
+
+  // Returns { octaves, rows } where each row (one octave, low to high) holds
+  // 12 keys: { midi, pc, isBlack, label, inKey, isTonic, isStart, play }.
+  // label is the key's spelling for the song (Cb, E# allowed); play is
+  // { name, hz } with a spelling the sample lookup understands.
+  function buildKeyboardModel(keyStr, pitches) {
+    const scaleNames = keyStr ? getDiatonicScaleNames(keyStr) : null;
+    const parsed = scaleNames ? parseKeyName(keyStr) : null;
+    const scaleByPc = {};
+    let outNames = MIXED_NAMES;
+    let tonicPC = null;
+    if (scaleNames) {
+      scaleNames.forEach(n => {
+        const m = n.match(/^([A-G])(#|b)?$/);
+        scaleByPc[pitchClassOf(m[1], m[2] || '')] = n;
+      });
+      tonicPC = pitchClassOf(parsed.letter, parsed.acc);
+      const sig = keySignatureCount(parsed.letter, parsed.acc, parsed.isMinor);
+      if (sig > 0) outNames = SHARP_NAMES;
+      if (sig < 0) outNames = FLAT_NAMES;
+    }
+    const startMidis = new Set(pitches.map(p => pitchNameToMidi(p.name)).filter(m => m !== null));
+    const octaves = keyboardOctaves(pitches);
+    const rows = octaves.map(o => {
+      const keys = [];
+      for (let pc = 0; pc < 12; pc++) {
+        const midi = (o + 1) * 12 + pc;
+        const inKey = scaleNames ? scaleByPc[pc] !== undefined : true;
+        const label = scaleNames && inKey ? scaleByPc[pc] : outNames[pc];
+        const playName = `${MIXED_NAMES[pc]}${o}`;
+        keys.push({
+          midi, pc,
+          isBlack: BLACK_PCS.includes(pc),
+          label, inKey,
+          isTonic: tonicPC === pc,
+          isStart: startMidis.has(midi),
+          play: { name: playName, hz: noteToHz(playName) }
+        });
+      }
+      return keys;
+    });
+    return { octaves, rows };
+  }
+
+  // The octave number a written name belongs to (Cb4 sounds as B3 but is
+  // written in octave 4; B#3 sounds as C4).
+  function writtenName(key) {
+    let octave = midiToOctave(key.midi);
+    if (key.label === 'Cb') octave += 1;
+    if (key.label === 'B#') octave -= 1;
+    return `${key.label}${octave}`;
   }
 
   const STORAGE_KEY = 'setlistSongsCSV';
@@ -1172,42 +1328,103 @@
     const on = toggle.checked;
     safeSetItem('setlistRehearsalMode', on ? 'on' : 'off');
     document.getElementById('rehearsalSection').style.display = on ? '' : 'none';
+    const song = currentSong();
+    if (on && song) preloadSongBuffers(song);
   }
 
+  function currentSong() {
+    const select = document.getElementById('songSelect');
+    if (!select || select.value === '') return null;
+    return songs[parseInt(select.value, 10)] || null;
+  }
+
+  function rehearsalModeOn() {
+    const toggle = document.getElementById('rehearsalToggle');
+    return !!(toggle && toggle.checked);
+  }
+
+  // v2.5: draws the Rehearsal Mode keyboard for a song — highest octave on
+  // top. Every key plays; only the song's key notes are bright and named.
   function buildRehearsalGrid(song) {
     const grid = document.getElementById('rehearsalGrid');
     const note = document.getElementById('rehearsalNote');
+    const played = document.getElementById('rehearsalPlayed');
     if (!grid || !note) return;
     grid.innerHTML = '';
+    if (played) played.textContent = '';
 
-    if (!song.key) {
-      note.textContent = 'No key set for this song.';
-      return;
+    let keyStr = song.key;
+    if (keyStr && !getDiatonicScaleNames(keyStr)) {
+      note.textContent = `Couldn't read key "${song.key}" — all keys shown alike. Dots = starting pitches.`;
+      keyStr = '';
+    } else if (!keyStr) {
+      note.textContent = 'No key set for this song. Dots = starting pitches.';
+    } else {
+      note.textContent = `${song.key} — bright keys are in the key; dots = starting pitches`;
     }
-    const rows = buildRehearsalRows(song.key, song.pitches);
-    if (!rows.length) {
-      note.textContent = `Couldn't read key "${song.key}".`;
-      return;
-    }
-    note.textContent = `${song.key} — diatonic notes`;
 
-    rows.forEach(row => {
+    const model = buildKeyboardModel(keyStr, song.pitches);
+    model.rows.slice().reverse().forEach(rowKeys => {
       const rowEl = document.createElement('div');
-      rowEl.className = 'rehearsal-row';
-      row.forEach((p, i) => {
+      rowEl.className = 'kb-row';
+      const whiteCount = rowKeys.filter(k => !k.isBlack).length;
+      const whiteW = 100 / whiteCount;
+      let whiteIdx = 0;
+      rowKeys.forEach(k => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'btn-grid-note' + (i === 0 ? ' is-tonic' : '');
-        btn.textContent = p.name;
-        btn.onclick = () => {
-          stopAudio();
-          const duration = parseFloat(document.getElementById('durationSlider').value);
-          playPianoNote(p, 0, duration);
-        };
+        btn.className = 'kb-key ' + (k.isBlack ? 'kb-black' : 'kb-white') +
+          (k.inKey ? '' : ' is-out') + (k.isTonic ? ' is-tonic' : '') + (k.isStart ? ' is-start' : '');
+        btn.dataset.midi = k.midi;
+        const name = writtenName(k);
+        btn.setAttribute('aria-label', name + (k.isStart ? ', starting pitch' : '') + (k.inKey ? '' : ', not in key'));
+        if (k.isStart) {
+          const dot = document.createElement('span');
+          dot.className = 'kb-dot';
+          btn.appendChild(dot);
+        }
+        // Label the in-key notes, plus every C (with its octave) so each
+        // row says where it is.
+        const text = k.pc === 0 ? name : (k.inKey ? k.label : '');
+        if (text) {
+          const lab = document.createElement('span');
+          lab.className = 'kb-label';
+          lab.textContent = text;
+          btn.appendChild(lab);
+        }
+        if (k.isBlack) {
+          // Centered on the line between the two white keys either side.
+          const bw = whiteW * 0.62;
+          btn.style.width = bw + '%';
+          btn.style.left = (whiteIdx * whiteW - bw / 2) + '%';
+        } else {
+          whiteIdx++;
+        }
+        btn.onclick = () => playKeyboardKey(btn, k);
         rowEl.appendChild(btn);
       });
       grid.appendChild(rowEl);
     });
+  }
+
+  let kbFlashTimer = null;
+  function playKeyboardKey(btn, k) {
+    stopAudio();
+    const duration = parseFloat(document.getElementById('durationSlider').value);
+    playPianoNote(k.play, 0, duration);
+    document.querySelectorAll('#rehearsalGrid .is-playing').forEach(el => el.classList.remove('is-playing'));
+    btn.classList.add('is-playing');
+    if (kbFlashTimer) clearTimeout(kbFlashTimer);
+    kbFlashTimer = setTimeout(() => btn.classList.remove('is-playing'), 250);
+    const played = document.getElementById('rehearsalPlayed');
+    if (played) {
+      played.innerHTML = '';
+      played.append('Played ');
+      const b = document.createElement('b');
+      b.textContent = writtenName(k);
+      played.appendChild(b);
+      if (!k.inKey) played.append(' (not in the key)');
+    }
   }
 
   function changeSong(delta) {
@@ -1277,10 +1494,10 @@
       const mapping = getNoteMapping(p.name);
       if (mapping) roots.add(mapping.root);
     });
-    if (song.key) {
-      buildRehearsalRows(song.key, song.pitches).forEach(row => {
-        row.forEach(p => {
-          const mapping = getNoteMapping(p.name);
+    if (rehearsalModeOn()) {
+      buildKeyboardModel(song.key, song.pitches).rows.forEach(row => {
+        row.forEach(k => {
+          const mapping = getNoteMapping(k.play.name);
           if (mapping) roots.add(mapping.root);
         });
       });
@@ -1795,7 +2012,7 @@
     const val = document.getElementById('formKey').value.trim();
     const preview = document.getElementById('formKeyPreview');
     if (!val) {
-      preview.textContent = 'No key — Rehearsal Mode grid will be skipped for this song.';
+      preview.textContent = 'No key — Rehearsal Mode keyboard will show all keys alike for this song.';
       preview.className = 'field-hint';
       return;
     }

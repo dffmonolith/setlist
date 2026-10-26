@@ -9,7 +9,7 @@
 // never swaps in mid-concert. Tapping it (or fully closing and reopening the
 // app) activates the new version.
 
-const CACHE_VERSION = 'v2.3';
+const CACHE_VERSION = 'v2.5';
 const CACHE_NAME = 'setlist-' + CACHE_VERSION;
 
 const PRECACHE = [
