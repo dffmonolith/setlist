@@ -6,7 +6,8 @@ Starting pitches and a metronome for an a cappella choir, built to run on stage 
 
 - Gives the group its starting pitches for each song from an embedded piano sample library, so once it's loaded it works with no internet connection.
 - Steps through the concert's running order with one tap.
-- The setlist (titles, keys, starting pitches, tempo) is plain delimited text. You can edit it in place or paste in a whole new one.
+- Keeps several named setlists, one per concert. Pick one at the top of the screen; the newest concert built into the file becomes the current one when it first arrives.
+- Each setlist (titles, keys, starting pitches, tempo) is plain delimited text. You can edit it in place or paste in a whole new one.
 - Rehearsal Mode lays out the full diatonic scale for a song's key.
 - Metronome (visual or audible) with large tap targets for adjusting tempo mid-performance.
 
@@ -20,10 +21,10 @@ Single self-contained HTML file in vanilla JS and the Web Audio API, with no bui
 
 On iOS 16.4+ the pitches play even with the Ring/Silent switch on.
 
-Note: on iOS the home-screen app keeps its own storage, separate from Safari, so a setlist edited in Safari won't appear in the installed app (and vice versa). Copy it across with the Edit → CSV tab.
+Note: on iOS the home-screen app keeps its own storage, separate from Safari, so a setlist edited in Safari won't appear in the installed app (and vice versa). Copy it across with Edit Setlist → Paste/Copy Text.
 
 You can still save `setlist.html` and open it directly as a file; it just won't get the home-screen install or auto-updates that way.
 
 ## Releasing a new version
 
-Bump `CACHE_VERSION` in `sw.js` (and the version tag in `setlist.html`). Installed copies download the new version in the background and show an **update ready ↻** button; nothing switches over until someone taps it or fully closes and reopens the app, so an update never lands mid-concert.
+Bump `CACHE_VERSION` in `sw.js` (and the version tag in `setlist.html`). To ship a new concert, add an entry with a new `id` to `BUILTIN_SETLISTS` in `setlist.html` (mark it `isDefault: true` to make it current when it arrives); changing an existing entry won't reach devices that already have it. Installed copies download the new version in the background and show an **update ready ↻** button; nothing switches over until someone taps it or fully closes and reopens the app, so an update never lands mid-concert.

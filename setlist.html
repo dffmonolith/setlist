@@ -216,6 +216,20 @@
       padding: 4px 8px;
     }
     .btn-edit-link:hover { text-decoration: underline; }
+    /* v2.2: named setlists — picker on the perform view, manage row in the editor */
+    .setlist-select { font-weight: 600; }
+    .setlist-manage {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: -8px 0 16px;
+    }
+    .setlist-manage .btn-cancel {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 10px 4px;
+      font-size: 0.9rem;
+    }
     .edit-tabs {
       display: flex;
       gap: 6px;
@@ -416,11 +430,14 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.1</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.3</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
   <button type="button" id="editSetlistBtn" class="btn-edit-link" onclick="showEditView()">&#9998; Edit Setlist</button>
 
   <div id="performView">
+  <label for="setlistSelect">Setlist</label>
+  <select id="setlistSelect" class="setlist-select" onchange="switchSetlist(this.value)"></select>
+
   <label for="songSelect">Select Song</label>
   <div class="song-row">
     <button type="button" class="btn-nav" id="prevSongBtn" onclick="changeSong(-1)" aria-label="Previous song">&#8592;</button>
@@ -492,6 +509,15 @@
   </div>
 
   <div id="editView" style="display:none;">
+    <label for="editSetlistSelect">Editing Setlist</label>
+    <select id="editSetlistSelect" class="setlist-select" onchange="editSwitchSetlist(this.value)"></select>
+    <div class="setlist-manage">
+      <button type="button" class="btn-cancel" onclick="newSetlist()">+ New</button>
+      <button type="button" class="btn-cancel" onclick="duplicateSetlist()">Duplicate</button>
+      <button type="button" class="btn-cancel" onclick="renameSetlist()">Rename</button>
+      <button type="button" class="btn-cancel" onclick="deleteSetlist()">Delete</button>
+    </div>
+
     <div class="edit-tabs">
       <button type="button" id="tabFormBtn" class="tab-btn tab-active" onclick="showEditTab('form')">Songs</button>
       <button type="button" id="tabCsvBtn" class="tab-btn" onclick="showEditTab('csv')">Paste/Copy Text</button>
@@ -506,7 +532,7 @@
         <input type="text" id="formTitle" placeholder="e.g. Ubi Caritas" oninput="markFormDirty()">
 
         <label for="formKey">Key <span class="field-hint">(e.g. G, Gm, Eb, F#m — optional)</span></label>
-        <input type="text" id="formKey" placeholder="e.g. Gm" oninput="markFormDirty(); updateKeyPreview()">
+        <input type="text" id="formKey" placeholder="e.g. Gm" oninput="markFormDirty(); updateKeyPreview(); updatePitchPreview()">
         <div id="formKeyPreview" class="field-hint"></div>
 
         <label for="formPitches">Starting Pitches <span class="field-hint">(comma separated, e.g. Bb4, D5)</span></label>
@@ -526,7 +552,7 @@
 
     <div id="csvTab" style="display:none;">
       <label for="csvTextarea">Setlist as Text</label>
-      <div class="field-hint" style="margin: 0 0 8px;">One song per line: <code>Title | Key | Pitch1, Pitch2, ... | BPM</code>. BPM is optional (30&ndash;240) and turns on the Metronome for that song. Copy this to back it up or share it; paste a new list in and tap Apply to replace the setlist.</div>
+      <div class="field-hint" style="margin: 0 0 8px;">One song per line: <code>Title | Key | Pitch1, Pitch2, ... | BPM</code>. BPM is optional (30&ndash;240) and turns on the Metronome for that song. Copy this to back it up or share it; paste a new list in and tap Apply to replace the songs in this setlist. Lines starting with <code>#</code> are ignored.</div>
       <textarea id="csvTextarea" class="csv-textarea" spellcheck="false"></textarea>
       <div class="form-btn-row">
         <button type="button" class="btn-main" style="margin:0;" onclick="applyCsvText()">Apply</button>
@@ -547,7 +573,39 @@
   // BPM is an optional tempo (30–240) that turns on the on-screen/aural
   // Metronome for that song. Leave it blank ("Title | Key | Pitches | ") or
   // omit the field entirely to leave the Metronome off for that song.
-  const csvData = [
+  // v2.2: named setlists. These are the setlists built into the file. Each
+  // device copies a built-in setlist into its own library the first time it
+  // sees it (tracked by id in library.seeded), so editing or deleting it on the
+  // device sticks, and a built-in marked isDefault becomes the current setlist
+  // when it first arrives. To ship a new concert, add an entry here with a NEW
+  // id; changing an existing entry won't reach devices that already have it.
+  const BUILTIN_SETLISTS = [
+    {
+      id: 'grotto-2026-11-28',
+      name: 'The Grotto 11/28/26',
+      isDefault: true,
+      lines: [
+        "Walking Down the Road to Bethlehem | Dm | D3, D4",
+        "Angels We Have Heard On High | F | F3, C4, F4, A4",
+        "A Lovely Rose Is All My Song | Fm | F3, Ab3, C4, F4",
+        "Silent Night | C | C3, D4, E4, G4",
+        "Tomorrow Shall Be My Dancing Day | G | D3, D4",
+        "White Christmas | G | G3, B3, D4, E4",
+        "Arise, My Love | Bm | B3, D4, F#4, B4",
+        "Ding Dong Merrily On High | Bb | Bb3, D4, F4, Bb4",
+        "Patapan | Gm | G3, Bb3, D4, G4",
+        "Good King Wenceslas | A | A3, C#4, E4, A4",
+        "The Stars Are With the Voyager | Dm | D3",
+        "Love | F | F3, A3, F4",
+        "Ubi Caritas | Eb | Eb3, Eb4",
+        "Laudate Dominum | C | C4, D4, E4, G4 | 96"
+      ]
+    },
+    {
+      // The single built-in list from v2.1 and earlier.
+      id: 'earlier-2026',
+      name: 'Earlier setlist',
+      lines: [
     "April is in My Mistress' Face | Gm | Bb4, D5 | 84",
     "Now is the Month of Maying | G | G3, B3, D4, G4 | 112",
     "Ubi Caritas | Eb | Eb4, Eb3",
@@ -559,6 +617,8 @@
     "O Happy Eyes | Eb | Eb3, Bb3, Eb4, G4",
     "Love | F | F3, A3, F4",
     "Good Night, Dear Heart | B | B2, F#3, B3, Eb4"
+      ]
+    }
   ];
 
   // Real acoustic grand piano samples (MP3, base64-encoded), embedded for fully offline use.
@@ -674,12 +734,28 @@
     let accidental = match[2];
     let octave = match[3];
 
-    if (accidental === '#') {
-      const sharpToFlatMap = { 'C': 'Db', 'D': 'Eb', 'F': 'Gb', 'G': 'Ab', 'A': 'Bb' };
-      return `${sharpToFlatMap[name] || name}${octave}`;
-    }
-
+    // v2.3: keep the spelling as written (2.2 and earlier turned every sharp
+    // into a flat, so F#4 showed as Gb4). spellForKey() then fits it to the key.
     return `${name}${accidental}${octave}`;
+  }
+
+  // v2.3: respells a pitch name to match the song's key when the same pitch
+  // is a note of that key under another name — Gb4 in B minor shows as F#4,
+  // Db4 in A major as C#4. This also fixes lists saved by 2.2 and earlier,
+  // which stored every sharp as a flat. Notes outside the key, songs with no
+  // key, and spellings the player can't look up (E#, B#, Cb, Fb) are left as
+  // they are.
+  function spellForKey(noteName, keyStr) {
+    if (!keyStr) return noteName;
+    const abs = noteNameToAbsoluteSemitone(noteName);
+    if (abs === null) return noteName;
+    const scale = getDiatonicScaleNames(keyStr);
+    if (!scale) return noteName;
+    const pc = ((abs % 12) + 12) % 12;
+    const match = scale.find(n => PITCH_CLASS_SEMITONES[n] === pc);
+    if (!match) return noteName;
+    const octave = (abs - PITCH_CLASS_SEMITONES[match]) / 12;
+    return `${match}${octave}`;
   }
 
   function noteToHz(noteStr) {
@@ -866,7 +942,7 @@
           if (Number.isFinite(num)) bpm = clampBpm(num);
         }
         const pitches = pitchPart.split(',').map(s => s.trim()).filter(Boolean).map(p => ({
-          name: formatNoteName(p),
+          name: spellForKey(formatNoteName(p), key),
           hz: noteToHz(p)
         }));
         return { title, key, pitches, bpm };
@@ -881,8 +957,170 @@
     }).join('\n');
   }
 
+  // ---- v2.2: setlist library ----
+  // localStorage[LIBRARY_KEY] = JSON { lists: [{ id, name, csv }], currentId,
+  // seeded: [built-in ids already copied in] }. STORAGE_KEY (v2.1's single
+  // list) is read once for migration and otherwise left alone, so going back
+  // to 2.1 still finds its old list.
+  const LIBRARY_KEY = 'setlistLibrary';
+  let library = null;
+
+  function newSetlistId() {
+    return 'sl-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function normalizeCsv(text) {
+    return songsToCsvLines(parseSongsFromLines(text.split('\n')));
+  }
+
+  function loadLibrary() {
+    let lib = null;
+    const raw = safeGetItem(LIBRARY_KEY);
+    if (raw) {
+      try { lib = JSON.parse(raw); } catch (err) { lib = null; }
+    }
+    if (!lib || !Array.isArray(lib.lists)) lib = { lists: [], currentId: null, seeded: [] };
+    if (!Array.isArray(lib.seeded)) lib.seeded = [];
+
+    // First run of 2.2 on this device: keep a 2.1 list the user had edited
+    // as its own setlist (an untouched one is the "Earlier setlist" built-in).
+    if (lib.lists.length === 0 && lib.seeded.length === 0) {
+      const old = safeGetItem(STORAGE_KEY);
+      const oldBuiltin = BUILTIN_SETLISTS.find(b => b.id === 'earlier-2026');
+      if (old && old.trim() && (!oldBuiltin || normalizeCsv(old) !== normalizeCsv(oldBuiltin.lines.join('\n')))) {
+        lib.lists.push({ id: newSetlistId(), name: 'My saved setlist (from 2.1)', csv: old });
+      }
+    }
+
+    // Copy in built-ins this device hasn't seen yet, ahead of existing lists.
+    const arrivals = [];
+    BUILTIN_SETLISTS.forEach(b => {
+      if (lib.seeded.includes(b.id)) return;
+      lib.seeded.push(b.id);
+      if (lib.lists.some(l => l.id === b.id)) return;
+      arrivals.push({ id: b.id, name: b.name, csv: b.lines.join('\n') });
+      if (b.isDefault) lib.currentId = b.id;
+    });
+    lib.lists = arrivals.concat(lib.lists);
+
+    if (lib.lists.length === 0) lib.lists.push({ id: newSetlistId(), name: 'New setlist', csv: '' });
+    if (!lib.lists.some(l => l.id === lib.currentId)) lib.currentId = lib.lists[0].id;
+    return lib;
+  }
+
+  function saveLibrary() {
+    safeSetItem(LIBRARY_KEY, JSON.stringify(library));
+  }
+
+  function currentSetlist() {
+    return library.lists.find(l => l.id === library.currentId) || library.lists[0];
+  }
+
+  function refreshSetlistSelects() {
+    ['setlistSelect', 'editSetlistSelect'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      sel.innerHTML = '';
+      library.lists.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = l.name;
+        sel.appendChild(opt);
+      });
+      sel.value = library.currentId;
+    });
+  }
+
+  // Makes the given setlist current and loads its songs; the song menu is
+  // cleared so the next refreshSongSelect() starts at the first song.
+  function useSetlist(id) {
+    if (!library.lists.some(l => l.id === id)) return;
+    library.currentId = id;
+    saveLibrary();
+    songs = parseSongsFromLines((currentSetlist().csv || '').split('\n'));
+    document.getElementById('songSelect').innerHTML = '';
+    refreshSetlistSelects();
+  }
+
+  // Perform view picker.
+  function switchSetlist(id) {
+    stopAudio();
+    stopMetronome();
+    useSetlist(id);
+    refreshSongSelect();
+  }
+
+  // Editor: after any setlist change, show that setlist's songs.
+  function showSetlistInEditor(id) {
+    useSetlist(id);
+    renderSongListEditor();
+    refreshCsvTextarea();
+  }
+
+  function editSwitchSetlist(id) {
+    if (!confirmDiscardIfDirty()) {
+      refreshSetlistSelects();
+      return;
+    }
+    closeSongForm();
+    showSetlistInEditor(id);
+  }
+
+  function askSetlistName(message, initial) {
+    const name = prompt(message, initial || '');
+    if (name === null) return null;
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    return trimmed;
+  }
+
+  function newSetlist() {
+    if (!confirmDiscardIfDirty()) return;
+    closeSongForm();
+    const name = askSetlistName('Name for the new setlist:', '');
+    if (!name) return;
+    const id = newSetlistId();
+    library.lists.push({ id, name, csv: '' });
+    showSetlistInEditor(id);
+  }
+
+  function duplicateSetlist() {
+    if (!confirmDiscardIfDirty()) return;
+    closeSongForm();
+    const cur = currentSetlist();
+    const name = askSetlistName('Name for the copy:', cur.name + ' (copy)');
+    if (!name) return;
+    const id = newSetlistId();
+    const idx = library.lists.indexOf(cur);
+    library.lists.splice(idx + 1, 0, { id, name, csv: cur.csv });
+    showSetlistInEditor(id);
+  }
+
+  function renameSetlist() {
+    const cur = currentSetlist();
+    const name = askSetlistName('Rename setlist:', cur.name);
+    if (!name) return;
+    cur.name = name;
+    saveLibrary();
+    refreshSetlistSelects();
+  }
+
+  function deleteSetlist() {
+    if (library.lists.length <= 1) {
+      alert('This is the only setlist, so it can\'t be deleted. Use + New first if you want to start over.');
+      return;
+    }
+    if (!confirmDiscardIfDirty()) return;
+    const cur = currentSetlist();
+    if (!confirm(`Delete the setlist "${cur.name}" from this device? This can't be undone.`)) return;
+    closeSongForm();
+    library.lists = library.lists.filter(l => l !== cur);
+    showSetlistInEditor(library.lists[0].id);
+  }
+
   function saveSongsToStorage() {
-    safeSetItem(STORAGE_KEY, songsToCsvLines(songs));
+    currentSetlist().csv = songsToCsvLines(songs);
+    saveLibrary();
   }
 
   function refreshSongSelect() {
@@ -912,9 +1150,10 @@
     // Format: "Title | Key | Pitch1, Pitch2, ..." — pipes separate the title,
     // key, and pitch list so titles containing commas (e.g. "O, Magnum
     // Mysterium") parse correctly. Key may be blank.
-    const stored = safeGetItem(STORAGE_KEY);
-    const lines = (stored !== null && stored.trim() !== '') ? stored.split('\n') : csvData;
-    songs = parseSongsFromLines(lines);
+    library = loadLibrary();
+    saveLibrary();
+    songs = parseSongsFromLines((currentSetlist().csv || '').split('\n'));
+    refreshSetlistSelects();
 
     // Persist Rehearsal Mode on/off across reloads, but default OFF so the
     // app never silently opens in rehearsal mode right before a concert.
@@ -1396,6 +1635,7 @@
     document.getElementById('performView').style.display = '';
     document.getElementById('editView').style.display = 'none';
     document.getElementById('editSetlistBtn').style.display = '';
+    refreshSetlistSelects();
     refreshSongSelect();
   }
 
@@ -1585,7 +1825,9 @@
       preview.className = 'field-hint error';
       return;
     }
-    preview.textContent = raw.map(formatNoteName).join(', ');
+    const keyVal = document.getElementById('formKey').value.trim();
+    const keyOk = keyVal && parseKeyName(keyVal) ? keyVal : '';
+    preview.textContent = raw.map(p => spellForKey(formatNoteName(p), keyOk)).join(', ');
     preview.className = 'field-hint ok';
   }
 
@@ -1636,7 +1878,7 @@
       }
       bpm = num;
     }
-    const pitches = rawPitches.map(p => ({ name: formatNoteName(p), hz: noteToHz(p) }));
+    const pitches = rawPitches.map(p => ({ name: spellForKey(formatNoteName(p), key), hz: noteToHz(p) }));
     const song = { title, key, pitches, bpm };
 
     if (editingIndex >= 0) {
