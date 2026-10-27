@@ -543,7 +543,7 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.7</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.8</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
 
   <div id="performView">
@@ -1451,9 +1451,11 @@
           deg.textContent = k.degree;
           btn.appendChild(deg);
         }
-        // Label the in-key notes, plus every C (with its octave) so each
-        // row says where it is.
-        const text = k.pc === 0 ? name : (k.inKey ? k.label : '');
+        // Label the in-key notes and (v2.8, DFF) every white key, so B
+        // natural in D minor is named too, just without a numeral. Every C
+        // carries its octave so each row says where it is. Out-of-key black
+        // keys stay blank.
+        const text = k.pc === 0 ? name : ((k.inKey || !k.isBlack) ? k.label : '');
         if (text) {
           const lab = document.createElement('span');
           lab.className = 'kb-label';
