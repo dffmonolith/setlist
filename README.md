@@ -8,7 +8,7 @@ Starting pitches and a metronome for an a cappella choir, built to run on stage 
 - Steps through the concert's running order with one tap.
 - Keeps several named setlists, one per concert. Pick one at the top of the screen; the newest concert built into the file becomes the current one when it first arrives.
 - Each setlist (titles, keys, starting pitches, tempo) is plain delimited text. You can edit it in place or paste in a whole new one.
-- Rehearsal Mode shows a three-octave piano keyboard for each song: the key's notes are bright and named, the tonic is outlined, dots mark the starting pitches, and every key plays, accidentals included.
+- Rehearsal Mode names the song's key in large type ("D minor") and shows a three-octave piano keyboard: the key's notes are named and marked with their scale degree (I, ii, iii … or i, ii°, III … in minor), the tonic is outlined, dots mark the starting pitches, and every key plays, accidentals included.
 - Metronome (visual or audible) with large tap targets for adjusting tempo mid-performance.
 
 Single self-contained HTML file in vanilla JS and the Web Audio API, with no build step and no dependencies.

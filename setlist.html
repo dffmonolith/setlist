@@ -178,6 +178,25 @@
     .switch input:checked + .switch-slider { background: var(--accent); }
     .switch input:checked + .switch-slider::before { transform: translateX(20px); }
     .rehearsal-section { margin-top: 14px; }
+    /* v2.7 (DFF): the song's key, spelled out, on the Rehearsal Mode line. */
+    .rehearsal-head {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      min-width: 0;
+    }
+    .rehearsal-key {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .rehearsal-head + .switch { margin-left: 10px; flex-shrink: 0; }
+    @media (max-width: 400px) {
+      .rehearsal-head { gap: 10px; }
+      .rehearsal-key { font-size: 1.25rem; }
+    }
     .rehearsal-note {
       font-size: 0.8rem;
       color: var(--muted);
@@ -185,9 +204,10 @@
       margin-bottom: 10px;
     }
     /* v2.5: Rehearsal Mode keyboard. One octave (C to B) per row, highest
-       octave on top and lowest at the bottom, like a choir score. Keys in the
-       song's key are bright and labelled; the rest are dimmed but still play.
-       The tonic is outlined; dots mark the song's starting pitches. */
+       octave on top and lowest at the bottom, like a choir score.
+       v2.6 (DFF): every key looks like a normal piano key; the key's notes
+       carry a dim scale-degree numeral above their name instead of the others
+       being greyed out. The tonic is outlined; dots mark starting pitches. */
     .rehearsal-grid {
       display: flex;
       flex-direction: column;
@@ -212,7 +232,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-end;
-      gap: 6px;
+      gap: 4px;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
       transition: background 0.08s ease;
@@ -226,21 +246,26 @@
       color: #0f172a;
       border: 1px solid #0f172a;
     }
-    .kb-white.is-out { background: #64748b; }
     .kb-black {
       position: absolute;
       top: 0;
-      height: 60%;
+      height: 55%;
       z-index: 2;
-      background: #475569;
+      background: #1e293b;
       color: #f8fafc;
       border: 1px solid #0f172a;
       font-size: 0.68rem;
       padding-bottom: 6px;
     }
-    .kb-black.is-out { background: #0b1120; }
     .kb-key.is-tonic { box-shadow: inset 0 0 0 3px var(--accent); }
     .kb-key.is-playing { background: var(--accent); color: #0f172a; }
+    .kb-deg {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.78rem;
+      font-weight: 400;
+      opacity: 0.5;
+    }
+    .kb-black .kb-deg { font-size: 0.66rem; opacity: 0.6; }
     .kb-dot {
       width: 12px;
       height: 12px;
@@ -518,7 +543,7 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.5</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.7</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
 
   <div id="performView">
@@ -588,7 +613,10 @@
   <hr style="border-color: #334155; margin: 20px 0;">
 
   <div class="setting-group">
-    <label for="rehearsalToggle" style="margin: 0;">Rehearsal Mode</label>
+    <div class="rehearsal-head">
+      <label for="rehearsalToggle" style="margin: 0;">Rehearsal Mode</label>
+      <span id="rehearsalKey" class="rehearsal-key" hidden></span>
+    </div>
     <label class="switch">
       <input type="checkbox" id="rehearsalToggle" onchange="onRehearsalToggle()">
       <span class="switch-slider"></span>
@@ -962,6 +990,11 @@
   const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
   const MIXED_NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+  // v2.6: the chord each scale degree carries, in scale order from the tonic.
+  // Minor assumes a major V (raised leading tone in the chord), per DFF;
+  // the 7th degree is the key-signature note, so its chord is VII.
+  const MAJOR_DEGREES = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii\u00b0'];
+  const MINOR_DEGREES = ['i', 'ii\u00b0', 'III', 'iv', 'V', 'VI', 'VII'];
 
   function pitchNameToMidi(name) {
     const m = (name || '').match(/^([A-G])(#|b)?(-?\d+)$/);
@@ -997,19 +1030,23 @@
   }
 
   // Returns { octaves, rows } where each row (one octave, low to high) holds
-  // 12 keys: { midi, pc, isBlack, label, inKey, isTonic, isStart, play }.
+  // 12 keys: { midi, pc, isBlack, label, inKey, degree, isTonic, isStart, play }.
   // label is the key's spelling for the song (Cb, E# allowed); play is
   // { name, hz } with a spelling the sample lookup understands.
   function buildKeyboardModel(keyStr, pitches) {
     const scaleNames = keyStr ? getDiatonicScaleNames(keyStr) : null;
     const parsed = scaleNames ? parseKeyName(keyStr) : null;
     const scaleByPc = {};
+    const degreeByPc = {};
     let outNames = MIXED_NAMES;
     let tonicPC = null;
     if (scaleNames) {
-      scaleNames.forEach(n => {
+      const degrees = parsed.isMinor ? MINOR_DEGREES : MAJOR_DEGREES;
+      scaleNames.forEach((n, i) => {
         const m = n.match(/^([A-G])(#|b)?$/);
-        scaleByPc[pitchClassOf(m[1], m[2] || '')] = n;
+        const pc = pitchClassOf(m[1], m[2] || '');
+        scaleByPc[pc] = n;
+        degreeByPc[pc] = degrees[i];
       });
       tonicPC = pitchClassOf(parsed.letter, parsed.acc);
       const sig = keySignatureCount(parsed.letter, parsed.acc, parsed.isMinor);
@@ -1029,6 +1066,7 @@
           midi, pc,
           isBlack: BLACK_PCS.includes(pc),
           label, inKey,
+          degree: degreeByPc[pc] || '',
           isTonic: tonicPC === pc,
           isStart: startMidis.has(midi),
           play: { name: playName, hz: noteToHz(playName) }
@@ -1297,6 +1335,7 @@
       document.getElementById('rehearsalGrid').innerHTML = '';
       const note = document.getElementById('rehearsalNote');
       if (note) note.textContent = 'No songs in setlist.';
+      updateRehearsalKey();
       updateMetronomeSection(null);
       updateNavButtons();
     }
@@ -1328,6 +1367,7 @@
     const on = toggle.checked;
     safeSetItem('setlistRehearsalMode', on ? 'on' : 'off');
     document.getElementById('rehearsalSection').style.display = on ? '' : 'none';
+    updateRehearsalKey();
     const song = currentSong();
     if (on && song) preloadSongBuffers(song);
   }
@@ -1338,13 +1378,34 @@
     return songs[parseInt(select.value, 10)] || null;
   }
 
+  // v2.7: "Dm" → "D minor", "Bb" → "B♭ major". Null for a missing or
+  // unreadable key.
+  function keyLongName(keyStr) {
+    const parsed = parseKeyName(keyStr);
+    if (!parsed || !getDiatonicScaleNames(keyStr)) return null;
+    const acc = parsed.acc === '#' ? '\u266F' : parsed.acc === 'b' ? '\u266D' : '';
+    return `${parsed.letter}${acc} ${parsed.isMinor ? 'minor' : 'major'}`;
+  }
+
+  // v2.7: shows the current song's key on the Rehearsal Mode line while
+  // Rehearsal Mode is on (hidden when it's off or the song has no key).
+  function updateRehearsalKey() {
+    const el = document.getElementById('rehearsalKey');
+    if (!el) return;
+    const song = currentSong();
+    const name = song ? keyLongName(song.key) : null;
+    el.textContent = name || '';
+    el.hidden = !(name && rehearsalModeOn());
+  }
+
   function rehearsalModeOn() {
     const toggle = document.getElementById('rehearsalToggle');
     return !!(toggle && toggle.checked);
   }
 
   // v2.5: draws the Rehearsal Mode keyboard for a song — highest octave on
-  // top. Every key plays; only the song's key notes are bright and named.
+  // top. Every key plays. v2.6: the key's notes show a scale-degree numeral
+  // and their name; a starting-pitch dot sits above the numeral.
   function buildRehearsalGrid(song) {
     const grid = document.getElementById('rehearsalGrid');
     const note = document.getElementById('rehearsalNote');
@@ -1360,8 +1421,9 @@
     } else if (!keyStr) {
       note.textContent = 'No key set for this song. Dots = starting pitches.';
     } else {
-      note.textContent = `${song.key} — bright keys are in the key; dots = starting pitches`;
+      note.textContent = 'Numbered keys are in the key; dots = starting pitches';
     }
+    updateRehearsalKey();
 
     const model = buildKeyboardModel(keyStr, song.pitches);
     model.rows.slice().reverse().forEach(rowKeys => {
@@ -1382,6 +1444,12 @@
           const dot = document.createElement('span');
           dot.className = 'kb-dot';
           btn.appendChild(dot);
+        }
+        if (k.degree) {
+          const deg = document.createElement('span');
+          deg.className = 'kb-deg';
+          deg.textContent = k.degree;
+          btn.appendChild(deg);
         }
         // Label the in-key notes, plus every C (with its octave) so each
         // row says where it is.
