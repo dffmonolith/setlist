@@ -543,7 +543,7 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.8</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.9</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
 
   <div id="performView">
@@ -712,7 +712,7 @@
         "A Lovely Rose Is All My Song | Fm | F3, Ab3, C4, F4",
         "Silent Night | C | C3, D4, E4, G4",
         "Tomorrow Shall Be My Dancing Day | G | D3, D4",
-        "White Christmas | G | G3, B3, D4, E4",
+        "White Christmas | C | G3, B3, D4, E4",
         "Arise, My Love | Bm | B3, D4, F#4, B4",
         "Ding Dong Merrily On High | Bb | Bb3, D4, F4, Bb4",
         "Patapan | Gm | G3, Bb3, D4, G4",
@@ -742,6 +742,33 @@
       ]
     }
   ];
+
+  // v2.9: corrections to built-in songs for devices that already have the
+  // list (built-ins are copied only once). Each runs once per device (tracked
+  // by id in library.fixed) and only changes a song whose key is still the
+  // old one, so a key the user set by hand is left alone.
+  const BUILTIN_FIXES = [
+    // DFF: White Christmas starts in C (D for the last chorus), not G.
+    { id: 'grotto-white-christmas-key-c', list: 'grotto-2026-11-28',
+      title: 'White Christmas', fromKey: 'G', toKey: 'C' }
+  ];
+
+  function applyBuiltinFixes(lib) {
+    if (!Array.isArray(lib.fixed)) lib.fixed = [];
+    BUILTIN_FIXES.forEach(f => {
+      if (lib.fixed.includes(f.id)) return;
+      lib.fixed.push(f.id);
+      const list = lib.lists.find(l => l.id === f.list);
+      if (!list || !list.csv) return;
+      list.csv = list.csv.split('\n').map(line => {
+        const cols = line.split('|');
+        if (cols.length < 2 || cols[0].trim() !== f.title || cols[1].trim() !== f.fromKey) return line;
+        cols[1] = cols[1].replace(f.fromKey, f.toKey);
+        console.log('*** builtin fix ' + f.id);
+        return cols.join('|');
+      }).join('\n');
+    });
+  }
 
   // Real acoustic grand piano samples (MP3, base64-encoded), embedded for fully offline use.
   // Source: Salamander Grand Piano V3 (Yamaha C5, Alexander Holm, CC-BY 3.0),
@@ -1196,6 +1223,7 @@
       if (b.isDefault) lib.currentId = b.id;
     });
     lib.lists = arrivals.concat(lib.lists);
+    applyBuiltinFixes(lib);
 
     if (lib.lists.length === 0) lib.lists.push({ id: newSetlistId(), name: 'New setlist', csv: '' });
     if (!lib.lists.some(l => l.id === lib.currentId)) lib.currentId = lib.lists[0].id;
