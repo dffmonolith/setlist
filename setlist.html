@@ -532,6 +532,128 @@
       transition: background-color 0.05s ease, box-shadow 0.05s ease;
       margin-bottom: 4px;
     }
+    /* v2.10: screen-awake tag beside "offline ready" */
+    .awake-tag {
+      font-size: 0.65rem;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      margin-left: 8px;
+      color: #fbbf24;
+    }
+    .awake-tag[hidden] { display: none; }
+    /* v2.10: End button (song's final chord) sits between Play Chord and Stop */
+    .btn-play-chord { flex: 2 1 0; }
+    .btn-end {
+      flex: 1.2 1 0;
+      background: var(--purple);
+      color: #fff;
+    }
+    .btn-end:hover { background: var(--purple-dim); }
+    .btn-end[hidden] { display: none; }
+    .play-row .btn-stop { flex: 1 1 0; }
+    /* v2.10: Tuner button + Just for Me switch on one line under the play row */
+    .tools-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .btn-tool {
+      background: #334155;
+      color: #fff;
+      border: 1px solid #475569;
+      padding: 10px 16px;
+      font-size: 0.95rem;
+    }
+    .btn-tool:hover { background: #475569; }
+    .btn-tool.is-on { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+    .quiet-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .quiet-group > label { margin: 0; }
+    .quiet-group.is-on > label { color: #fbbf24; }
+    /* v2.10: tuner strip */
+    .tuner-panel {
+      margin-top: 10px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px 14px 12px;
+    }
+    .tuner-panel[hidden] { display: none; }
+    .tuner-readout {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 14px;
+      min-height: 2.6rem;
+    }
+    .tuner-note {
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.1;
+      min-width: 3.2em;
+      text-align: right;
+    }
+    .tuner-cents {
+      font-size: 1.2rem;
+      font-weight: 700;
+      min-width: 4.2em;
+      color: #fbbf24;
+    }
+    .tuner-panel.in-tune .tuner-cents { color: #4ade80; }
+    .tuner-panel.is-stale .tuner-note,
+    .tuner-panel.is-stale .tuner-cents,
+    .tuner-panel.is-stale .tuner-needle { opacity: 0.4; }
+    .tuner-meter {
+      position: relative;
+      height: 22px;
+      margin: 8px 0 2px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .tuner-zone {
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 40%; width: 20%;
+      background: rgba(74,222,128,0.18);
+    }
+    .tuner-center {
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 50%; width: 2px;
+      margin-left: -1px;
+      background: #4ade80;
+    }
+    .tuner-needle {
+      position: absolute;
+      top: 2px; bottom: 2px;
+      left: 50%; width: 6px;
+      margin-left: -3px;
+      border-radius: 3px;
+      background: #fbbf24;
+      transition: left 0.08s linear;
+    }
+    .tuner-needle[hidden] { display: none; }
+    .tuner-panel.in-tune .tuner-needle { background: #4ade80; }
+    .tuner-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .tuner-msg {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 4px;
+      min-height: 1.1em;
+    }
     .metronome-flash.beat {
       background: var(--purple);
       box-shadow: 0 0 16px 2px var(--purple);
@@ -543,7 +665,7 @@
 <body>
 
 <div class="container">
-  <h2>Setlist Pitch Pipe<span class="version-tag">v2.9</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
+  <h2>Setlist Pitch Pipe<span class="version-tag">v2.10</span><span id="offlineTag" class="offline-tag" hidden title="Cached on this device; works with no connection">&#10003; offline ready</span><span id="awakeTag" class="awake-tag" hidden title="The screen won't dim or lock while Setlist is open">&#9728; awake</span><button type="button" id="updateLink" class="update-link" hidden title="A newer version is downloaded. Tap to switch to it.">update ready &#8635;</button></h2>
 
 
   <div id="performView">
@@ -564,8 +686,26 @@
   <div id="pitchButtons" class="pitch-buttons"></div>
   
   <div class="play-row">
-    <button type="button" class="btn-main btn-play" onclick="rollChord()"><span class="btn-label">&#9654; Play Chord</span><span class="btn-sub">rolled, bottom up</span></button>
+    <button type="button" class="btn-main btn-play btn-play-chord" onclick="rollChord()"><span class="btn-label">&#9654; Play Chord</span><span class="btn-sub">rolled, bottom up</span></button>
+    <button type="button" id="endBtn" class="btn-end btn-play" onclick="playEndChord()" hidden><span class="btn-label">&#9654; End</span><span class="btn-sub">final chord</span></button>
     <button type="button" class="btn-stop btn-play" onclick="stopAudio()">&#9632; Stop</button>
+  </div>
+
+  <div class="tools-row">
+    <button type="button" id="tunerBtn" class="btn-tool" onclick="toggleTuner()" aria-pressed="false">&#127908; Tuner</button>
+    <div id="quietGroup" class="quiet-group">
+      <label for="quietToggle">Just for Me</label>
+      <label class="switch" title="Play quietly, to check a pitch with the device at your ear">
+        <input type="checkbox" id="quietToggle" onchange="onQuietToggle()">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+  </div>
+  <div id="tunerPanel" class="tuner-panel" hidden aria-live="off">
+    <div class="tuner-readout"><span id="tunerNote" class="tuner-note">&ndash;</span><span id="tunerCents" class="tuner-cents"></span></div>
+    <div class="tuner-meter" aria-hidden="true"><div class="tuner-zone"></div><div class="tuner-center"></div><div id="tunerNeedle" class="tuner-needle" hidden></div></div>
+    <div class="tuner-scale" aria-hidden="true"><span>&minus;50&cent; flat</span><span>in tune</span><span>sharp +50&cent;</span></div>
+    <div id="tunerMsg" class="tuner-msg"></div>
   </div>
 
   <hr style="border-color: #334155; margin: 20px 0;">
@@ -637,6 +777,7 @@
       <button type="button" class="btn-cancel" onclick="duplicateSetlist()">Duplicate</button>
       <button type="button" class="btn-cancel" onclick="renameSetlist()">Rename</button>
       <button type="button" class="btn-cancel" onclick="deleteSetlist()">Delete</button>
+      <button type="button" class="btn-cancel" id="shareSetlistBtn" onclick="shareSetlist()">&#8679; Share</button>
     </div>
 
     <div class="edit-tabs">
@@ -664,6 +805,10 @@
         <input type="text" id="formTempo" inputmode="numeric" placeholder="e.g. 100" oninput="markFormDirty(); updateTempoPreview()">
         <div id="formTempoPreview" class="field-hint"></div>
 
+        <label for="formEnd">Ending Chord <span class="field-hint">(optional &mdash; plays from the &#9654; End button, e.g. D3, A3, D4, F#4)</span></label>
+        <input type="text" id="formEnd" placeholder="e.g. D3, A3, D4, F#4" oninput="markFormDirty(); updateEndPreview()">
+        <div id="formEndPreview" class="field-hint"></div>
+
         <div class="form-btn-row">
           <button type="button" class="btn-main" style="margin:0;" onclick="saveSongForm()">Save Song</button>
           <button type="button" class="btn-cancel" onclick="cancelSongForm()">Cancel</button>
@@ -673,7 +818,7 @@
 
     <div id="csvTab" style="display:none;">
       <label for="csvTextarea">Setlist as Text</label>
-      <div class="field-hint" style="margin: 0 0 8px;">One song per line: <code>Title | Key | Pitch1, Pitch2, ... | BPM</code>. BPM is optional (30&ndash;240) and turns on the Metronome for that song. Copy this to back it up or share it; paste a new list in and tap Apply to replace the songs in this setlist. Lines starting with <code>#</code> are ignored.</div>
+      <div class="field-hint" style="margin: 0 0 8px;">One song per line: <code>Title | Key | Pitch1, Pitch2, ... | BPM | End chord</code>. BPM is optional (30&ndash;240) and turns on the Metronome for that song. End chord is optional (e.g. <code>D3, A3, D4, F#4</code>) and adds an &#9654; End button. You can also paste a shared setlist link here and tap Apply to add it as a new setlist. Copy this to back it up or share it; paste a new list in and tap Apply to replace the songs in this setlist. Lines starting with <code>#</code> are ignored.</div>
       <textarea id="csvTextarea" class="csv-textarea" spellcheck="false"></textarea>
       <div class="form-btn-row">
         <button type="button" class="btn-main" style="margin:0;" onclick="applyCsvText()">Apply</button>
@@ -695,6 +840,10 @@
   // BPM is an optional tempo (30–240) that turns on the on-screen/aural
   // Metronome for that song. Leave it blank ("Title | Key | Pitches | ") or
   // omit the field entirely to leave the Metronome off for that song.
+  // v2.10: an optional fifth field is the song's ending chord
+  // ("Title | Key | Pitches | BPM | D3, A3, D4, F#4"), played as a block chord
+  // by the ▶ End button so the director can check where the choir finished.
+  // It's spelled as written (the end is often in another key).
   // v2.2: named setlists. These are the setlists built into the file. Each
   // device copies a built-in setlist into its own library the first time it
   // sees it (tracked by id in library.seeded), so editing or deleting it on the
@@ -845,7 +994,17 @@
 
   let songs = [];
   let audioCtx = null;
+  let masterGain = null;      // v2.10: every sound goes through this (Just for Me turns it down)
   let activeSources = [];
+  // v2.10: Just for Me — about -20 dB, for checking a pitch with the device at
+  // your ear. Not saved: the app always opens at full volume, so it can't
+  // start a concert whispering.
+  const QUIET_GAIN = 0.1;
+  let quietMode = false;
+  // v2.10: tuner state (declared here because the audio-session code below
+  // runs at load and asks whether the mic is open).
+  const tuner = { on: false, stream: null, source: null, boost: null, analyser: null, sink: null,
+    buf: null, raf: 0, recent: [], lastHeard: 0, heardAny: false, nsdf: null };
   const decodedBufferCache = {};
 
   function updateDurationLabel() {
@@ -1166,15 +1325,25 @@
           name: spellForKey(formatNoteName(p), key),
           hz: noteToHz(p)
         }));
-        return { title, key, pitches, bpm };
+        const end = parseEndPitches(parts.length >= 5 ? parts[4] : '');
+        return { title, key, pitches, bpm, end };
       })
       .filter(s => s.title);
+  }
+
+  // v2.10: the ending chord, spelled as written. Unreadable names are dropped.
+  function parseEndPitches(text) {
+    return (text || '').split(',').map(s => s.trim()).filter(Boolean)
+      .filter(p => noteNameToAbsoluteSemitone(p) !== null)
+      .map(p => ({ name: formatNoteName(p), hz: noteToHz(p) }));
   }
 
   function songsToCsvLines(list) {
     return list.map(s => {
       const pitchStr = s.pitches.map(p => p.name).join(', ');
-      return `${s.title} | ${s.key || ''} | ${pitchStr} | ${s.bpm != null ? s.bpm : ''}`;
+      const line = `${s.title} | ${s.key || ''} | ${pitchStr} | ${s.bpm != null ? s.bpm : ''}`;
+      // The End field is written only when there is one, so older lines read the same.
+      return s.end && s.end.length ? `${line} | ${s.end.map(p => p.name).join(', ')}` : line;
     }).join('\n');
   }
 
@@ -1365,6 +1534,7 @@
       if (note) note.textContent = 'No songs in setlist.';
       updateRehearsalKey();
       updateMetronomeSection(null);
+      document.getElementById('endBtn').hidden = true;
       updateNavButtons();
     }
   }
@@ -1388,6 +1558,12 @@
 
     initMetronomeMode();
     refreshSongSelect();
+    // v2.10: opened from a shared link? Offer to add it once the page is up.
+    if (location.hash.indexOf('#add=') === 0) setTimeout(importFromHash, 50);
+    // ...or a link opened while the app is already showing.
+    window.addEventListener('hashchange', () => {
+      if (location.hash.indexOf('#add=') === 0) importFromHash();
+    });
   }
 
   function onRehearsalToggle() {
@@ -1574,6 +1750,7 @@
 
     buildRehearsalGrid(song);
     updateMetronomeSection(song);
+    document.getElementById('endBtn').hidden = !(song.end && song.end.length);
 
     // Decode every root sample this song needs right away, in the background.
     // Without this, the FIRST time a note's root sample is played, decoding it
@@ -1588,7 +1765,7 @@
   async function preloadSongBuffers(song) {
     initAudio();
     const roots = new Set();
-    song.pitches.forEach(p => {
+    song.pitches.concat(song.end || []).forEach(p => {
       const mapping = getNoteMapping(p.name);
       if (mapping) roots.add(mapping.root);
     });
@@ -1606,10 +1783,12 @@
   // iOS: Web Audio is in the "ambient" audio-session category by default, which
   // the Ring/Silent switch mutes. 'playback' makes it behave like <audio> and
   // play regardless of the switch (Safari 16.4+; feature-detected).
+  // v2.10: while the tuner has the mic open the session must be
+  // 'play-and-record' (iOS won't record in 'playback').
   function setPlaybackAudioSession() {
     if (!('audioSession' in navigator)) return;
     try {
-      navigator.audioSession.type = 'playback';
+      navigator.audioSession.type = tuner.on ? 'play-and-record' : 'playback';
     } catch (e) {
       console.warn('*** audioSession.type assignment failed', e);
     }
@@ -1637,11 +1816,33 @@
     setPlaybackAudioSession();
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      makeMasterGain();
     }
     // iOS uses 'interrupted' (not 'suspended') after a phone call, Siri, or
     // backgrounding; resume either way.
     if (audioCtx.state !== 'running') {
       audioCtx.resume().catch(e => console.warn('*** audioCtx.resume failed', e));
+    }
+  }
+
+  // v2.10: one output node for every sound, so Just for Me can turn it all down.
+  function makeMasterGain() {
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = quietMode ? QUIET_GAIN : 1;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  function outputNode() {
+    if (!audioCtx) initAudio();
+    return masterGain;
+  }
+
+  function onQuietToggle() {
+    quietMode = document.getElementById('quietToggle').checked;
+    document.getElementById('quietGroup').classList.toggle('is-on', quietMode);
+    if (masterGain) {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.value = quietMode ? QUIET_GAIN : 1;
     }
   }
 
@@ -1730,7 +1931,7 @@
       gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
       source.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(outputNode());
 
       source.start(startTime);
       source.stop(startTime + duration);
@@ -1755,7 +1956,7 @@
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(outputNode());
 
     osc.start(startTime);
     osc.stop(startTime + duration);
@@ -1782,6 +1983,17 @@
     sortedPitches.forEach((p, i) => {
       playPianoNote(p, i * rollDelay, duration);
     });
+  }
+
+  // v2.10: the song's ending chord, all notes at once (a block chord is easier
+  // to compare with what the choir is holding than a roll).
+  async function playEndChord() {
+    stopAudio();
+    const song = currentSong();
+    if (!song || !song.end || !song.end.length) return;
+    await preloadSongBuffers(song);
+    const duration = parseFloat(document.getElementById('durationSlider').value);
+    song.end.forEach(p => playPianoNote(p, 0, duration));
   }
 
   function stopAudio() {
@@ -1911,7 +2123,7 @@
     gain.gain.setValueAtTime(0.25, t);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(outputNode());
     osc.start(t);
     osc.stop(t + 0.06);
   }
@@ -1937,6 +2149,7 @@
 
   function showEditView() {
     stopMetronome();
+    closeTuner();
     document.getElementById('performView').style.display = 'none';
     document.getElementById('editView').style.display = '';
     document.getElementById('editSetlistBtn').style.display = 'none';
@@ -1999,7 +2212,8 @@
       meta.className = 'song-list-meta';
       const pitchStr = song.pitches.map(p => p.name).join(', ');
       meta.textContent = (song.key ? `Key: ${song.key} — ` : '') + pitchStr +
-        (song.bpm != null ? ` — \u266a=${song.bpm}` : '');
+        (song.bpm != null ? ` — \u266a=${song.bpm}` : '') +
+        (song.end && song.end.length ? ` — ends ${song.end.map(p => p.name).join(', ')}` : '');
       info.appendChild(title);
       info.appendChild(meta);
       row.appendChild(info);
@@ -2070,6 +2284,7 @@
     const keyInput = document.getElementById('formKey');
     const pitchInput = document.getElementById('formPitches');
     const tempoInput = document.getElementById('formTempo');
+    const endInput = document.getElementById('formEnd');
 
     if (idx >= 0) {
       const song = songs[idx];
@@ -2077,15 +2292,18 @@
       keyInput.value = song.key || '';
       pitchInput.value = song.pitches.map(p => p.name).join(', ');
       tempoInput.value = song.bpm != null ? String(song.bpm) : '';
+      endInput.value = (song.end || []).map(p => p.name).join(', ');
     } else {
       titleInput.value = '';
       keyInput.value = '';
       pitchInput.value = '';
       tempoInput.value = '';
+      endInput.value = '';
     }
     updateKeyPreview();
     updatePitchPreview();
     updateTempoPreview();
+    updateEndPreview();
     formDirty = false;
     form.style.display = '';
     titleInput.focus();
@@ -2146,6 +2364,25 @@
     preview.className = 'field-hint ok';
   }
 
+  function updateEndPreview() {
+    const val = document.getElementById('formEnd').value.trim();
+    const preview = document.getElementById('formEndPreview');
+    if (!val) {
+      preview.textContent = 'No ending chord — the ▶ End button won\'t show for this song.';
+      preview.className = 'field-hint';
+      return;
+    }
+    const raw = val.split(',').map(s => s.trim()).filter(Boolean);
+    const bad = raw.filter(p => noteNameToAbsoluteSemitone(p) === null);
+    if (bad.length) {
+      preview.textContent = `Couldn't read: ${bad.join(', ')} — use note+octave, e.g. D3, F#4.`;
+      preview.className = 'field-hint error';
+      return;
+    }
+    preview.textContent = raw.map(p => formatNoteName(p)).join(', ');
+    preview.className = 'field-hint ok';
+  }
+
   function updateTempoPreview() {
     const raw = document.getElementById('formTempo').value.trim();
     const preview = document.getElementById('formTempoPreview');
@@ -2169,6 +2406,7 @@
     const key = document.getElementById('formKey').value.trim();
     const pitchVal = document.getElementById('formPitches').value.trim();
     const tempoVal = document.getElementById('formTempo').value.trim();
+    const endVal = document.getElementById('formEnd').value.trim();
 
     if (!title) {
       alert('Please enter a song title.');
@@ -2193,8 +2431,14 @@
       }
       bpm = num;
     }
+    const rawEnd = endVal.split(',').map(s => s.trim()).filter(Boolean);
+    const badEnd = rawEnd.find(p => noteNameToAbsoluteSemitone(p) === null);
+    if (badEnd) {
+      alert(`Couldn't read ending-chord note "${badEnd}". Use note + octave, e.g. D3, F#4.`);
+      return;
+    }
     const pitches = rawPitches.map(p => ({ name: spellForKey(formatNoteName(p), key), hz: noteToHz(p) }));
-    const song = { title, key, pitches, bpm };
+    const song = { title, key, pitches, bpm, end: parseEndPitches(endVal) };
 
     if (editingIndex >= 0) {
       songs[editingIndex] = song;
@@ -2213,6 +2457,24 @@
 
   function applyCsvText() {
     const text = document.getElementById('csvTextarea').value;
+    // v2.10: a pasted share link adds its setlist as a new one (this is how the
+    // installed iPhone/iPad app takes a link, since links open in Safari).
+    const linkMatch = text.match(/#add=([A-Za-z0-9_-]+)/);
+    if (linkMatch) {
+      const shared = decodeSharePayload(linkMatch[1]);
+      const msg = document.getElementById('csvApplyMsg');
+      if (!shared) {
+        msg.textContent = 'That link looks cut off or damaged — ask for it to be sent again.';
+        msg.className = 'field-hint error';
+        return;
+      }
+      if (addSharedSetlist(shared)) {
+        showSetlistInEditor(library.currentId);
+        msg.textContent = `Added the setlist "${currentSetlist().name}".`;
+        msg.className = 'field-hint ok';
+      }
+      return;
+    }
     const lines = text.split('\n');
     const parsed = parseSongsFromLines(lines);
     const msg = document.getElementById('csvApplyMsg');
@@ -2229,6 +2491,373 @@
     renderSongListEditor();
   }
 
+  // ---- v2.10: Share a setlist ----
+  // A link carries the setlist's name and text in its #add= part (base64url of
+  // JSON), so it works offline and never touches a server. Opening the link
+  // offers to add it; pasting the link into Paste/Copy Text does the same (the
+  // installed iPhone/iPad app has its own storage, and links open in Safari).
+  const PUBLIC_APP_URL = 'https://dffmonolith.github.io/setlist/setlist.html';
+
+  function toBase64Url(text) {
+    const bytes = new TextEncoder().encode(text);
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function fromBase64Url(code) {
+    const b64 = code.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b64 + '==='.slice((b64.length + 3) % 4));
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function appBaseUrl() {
+    if (!/^https?:$/.test(location.protocol)) return PUBLIC_APP_URL;   // file:// or a preview
+    let path = location.pathname;
+    if (path.endsWith('/')) path += 'setlist.html';
+    return location.origin + path;
+  }
+
+  function shareLinkFor(list) {
+    return appBaseUrl() + '#add=' + toBase64Url(JSON.stringify({ v: 1, n: list.name, c: list.csv || '' }));
+  }
+
+  // Returns { name, csv } or null for a damaged link.
+  function decodeSharePayload(code) {
+    try {
+      const obj = JSON.parse(fromBase64Url(code));
+      if (!obj || typeof obj.n !== 'string' || typeof obj.c !== 'string') return null;
+      return { name: obj.n.trim() || 'Shared setlist', csv: obj.c };
+    } catch (err) {
+      console.log('*** share link unreadable', err);
+      return null;
+    }
+  }
+
+  // Adds a shared setlist (asking first) and makes it current. Same name and
+  // same songs as one already here: just switches to it. Same name, different
+  // songs: the new one gets " (2)" etc. Returns true if anything changed.
+  function addSharedSetlist(shared) {
+    const count = parseSongsFromLines(shared.csv.split('\n')).length;
+    // "Same" also covers a copy added earlier as "Name (2)".
+    const sameName = n => n === shared.name || (n.startsWith(shared.name + ' (') && /\(\d+\)$/.test(n));
+    const same = library.lists.find(l => sameName(l.name) && normalizeCsv(l.csv || '') === normalizeCsv(shared.csv));
+    if (same) {
+      alert(`You already have the setlist "${same.name}" with these songs. Switching to it.`);
+      library.currentId = same.id;
+      saveLibrary();
+      return true;
+    }
+    if (!confirm(`Add the shared setlist "${shared.name}" (${count} song${count === 1 ? '' : 's'}) to your setlists?`)) return false;
+    let name = shared.name;
+    for (let i = 2; library.lists.some(l => l.name === name); i++) name = `${shared.name} (${i})`;
+    const id = newSetlistId();
+    library.lists.push({ id, name, csv: normalizeCsv(shared.csv) });
+    library.currentId = id;
+    saveLibrary();
+    return true;
+  }
+
+  function importFromHash() {
+    const code = location.hash.slice('#add='.length);
+    // Drop the #add= part first, so a reload doesn't ask again.
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (err) { /* ignore */ }
+    const shared = decodeSharePayload(code);
+    if (!shared) {
+      alert('This setlist link looks cut off or damaged, so nothing was added. Ask for it to be sent again.');
+      return;
+    }
+    if (!addSharedSetlist(shared)) return;
+    stopAudio();
+    stopMetronome();
+    useSetlist(library.currentId);
+    refreshSongSelect();
+  }
+
+  async function shareSetlist() {
+    if (!confirmDiscardIfDirty()) return;
+    const list = currentSetlist();
+    const link = shareLinkFor(list);
+    const text = `Setlist "${list.name}" — open the link to add it to Setlist.\n\n# ${list.name}\n${list.csv || ''}\n`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Setlist: ${list.name}`, text, url: link });
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;    // the user closed the share sheet
+        console.log('*** navigator.share failed, copying instead', err);
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${link}\n`);
+      alert(`Copied the setlist "${list.name}" and its link. Paste it into a message or email.`);
+    } catch (err) {
+      prompt('Copy this link to share the setlist:', link);
+    }
+  }
+
+  // ---- v2.10: keep the screen awake while Setlist is open ----
+  // Screen Wake Lock: held only while the app is on screen; the browser drops
+  // it when the app goes to the background, and we ask again on return (and on
+  // the next tap, for browsers that want a gesture first).
+  const screenAwake = (() => {
+    let lock = null;
+    let asking = false;
+
+    function showTag(on) {
+      const tag = document.getElementById('awakeTag');
+      if (tag) tag.hidden = !on;
+    }
+
+    async function request() {
+      if (!('wakeLock' in navigator) || lock || asking || document.visibilityState !== 'visible') return;
+      asking = true;
+      try {
+        lock = await navigator.wakeLock.request('screen');
+        showTag(true);
+        lock.addEventListener('release', () => { lock = null; showTag(false); });
+      } catch (err) {
+        console.log('*** wake lock not granted: ' + (err && err.name));
+      } finally {
+        asking = false;
+      }
+    }
+
+    function start() {
+      request();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') request();
+      });
+      document.addEventListener('pointerdown', request, true);
+    }
+
+    return { start, isHeld: () => !!lock };
+  })();
+
+  // ---- v2.10: Tuner ----
+  // McLeod Pitch Method, the same detector Intervals uses. Shows the nearest
+  // note (spelled for the song's key) and how many cents off, with a needle.
+  // The mic is open only while the strip is showing. A sung chord has no
+  // single pitch, so with the full choir it reads whichever voice is loudest.
+  const TUNER_MIN_HZ = 60;       // ~B1
+  const TUNER_MAX_HZ = 1100;     // ~C#6
+  const TUNER_CLARITY = 0.80;
+  const TUNER_BOOST = 4;         // float path, so no clipping; helps across a room
+  const TUNER_SMOOTH = 5;        // median of the last few readings
+  const TUNER_STALE_S = 0.8;     // dim the reading after this long with no clear pitch
+  const IN_TUNE_CENTS = 10;
+
+  function detectPitch(buf, sr, minHz, maxHz) {
+    const W = buf.length;
+    let mean = 0, rms = 0;
+    for (let i = 0; i < W; i++) mean += buf[i];
+    mean /= W;
+    for (let i = 0; i < W; i++) rms += (buf[i] - mean) * (buf[i] - mean);
+    rms = Math.sqrt(rms / W);
+    if (rms < 0.004) return { hz: 0, clarity: 0, rms };                 // silence
+    const tauMin = Math.max(2, Math.floor(sr / maxHz));
+    const tauMax = Math.min(Math.ceil(sr / minHz) + 2, Math.floor(W * 0.7));
+    if (!tuner.nsdf || tuner.nsdf.length < tauMax + 2) tuner.nsdf = new Float32Array(tauMax + 2);
+    const nsdf = tuner.nsdf;
+    let m = 0;
+    for (let j = 0; j < W; j++) { const v = buf[j] - mean; m += 2 * v * v; }
+    for (let tau = 0; tau <= tauMax + 1; tau++) {
+      if (tau > 0) { const a0 = buf[tau - 1] - mean, a1 = buf[W - tau] - mean; m -= a0 * a0 + a1 * a1; }
+      let r = 0;
+      for (let j = 0; j < W - tau; j++) r += (buf[j] - mean) * (buf[j + tau] - mean);
+      nsdf[tau] = m > 0 ? 2 * r / m : 0;
+    }
+    // Key maxima: the top of each positive lobe after the first zero crossing.
+    const peaks = [];
+    let t = 1;
+    while (t <= tauMax && nsdf[t] > 0) t++;
+    while (t <= tauMax) {
+      while (t <= tauMax && nsdf[t] <= 0) t++;
+      let best = -1;
+      while (t <= tauMax && nsdf[t] > 0) {
+        if (best < 0 || nsdf[t] > nsdf[best]) best = t;
+        t++;
+      }
+      if (best > 0 && best >= tauMin && best < tauMax) peaks.push(best);
+    }
+    if (!peaks.length) return { hz: 0, clarity: 0, rms };
+    let top = 0;
+    peaks.forEach(p => { if (nsdf[p] > top) top = nsdf[p]; });
+    const pick = peaks.find(p => nsdf[p] >= 0.9 * top);
+    const a = nsdf[pick - 1], b = nsdf[pick], c = nsdf[pick + 1];
+    const den = a - 2 * b + c;
+    let shift = den ? (a - c) / (2 * den) : 0;
+    if (shift > 0.5 || shift < -0.5) shift = 0;
+    const peakVal = b - (a - c) * shift / 4;
+    return { hz: sr / (pick + shift), clarity: Math.min(1, peakVal), rms };
+  }
+
+  function tunerMsg(text) {
+    const el = document.getElementById('tunerMsg');
+    if (el) el.textContent = text;
+  }
+
+  function toggleTuner() {
+    if (tuner.on) closeTuner();
+    else openTuner();
+  }
+
+  // iPadOS switches the audio hardware (rate, route) when the mic opens, and a
+  // context made before that can deliver garbled mic audio, so the context is
+  // rebuilt once recording starts (Intervals learned this). Decoded piano
+  // buffers carry over.
+  function rebuildAudioContext(sampleRate) {
+    stopAudio();
+    const old = audioCtx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    try {
+      audioCtx = sampleRate ? new Ctx({ sampleRate }) : new Ctx();
+    } catch (err) {
+      audioCtx = new Ctx();
+    }
+    makeMasterGain();
+    if (old) { try { old.close(); } catch (err) { /* ignore */ } }
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+  }
+
+  async function openTuner() {
+    const panel = document.getElementById('tunerPanel');
+    const btn = document.getElementById('tunerBtn');
+    tuner.on = true;
+    panel.hidden = false;
+    btn.classList.add('is-on');
+    btn.setAttribute('aria-pressed', 'true');
+    resetTunerDisplay();
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      tunerMsg('The tuner needs the app opened from its web address or home-screen icon, not as a file.');
+      return;
+    }
+    tunerMsg('Asking for the microphone…');
+    setPlaybackAudioSession();          // 'play-and-record' while tuner.on
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: {
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      if (!tuner.on) { stream.getTracks().forEach(tr => tr.stop()); return; }   // closed while asking
+      tuner.stream = stream;
+      const track = stream.getAudioTracks()[0];
+      const st = track && track.getSettings ? track.getSettings() : {};
+      console.log('*** tuner mic: ' + (track ? track.label : '?') + ', rate ' + st.sampleRate);
+      rebuildAudioContext(st.sampleRate || 0);
+      tuner.source = audioCtx.createMediaStreamSource(stream);
+      tuner.boost = audioCtx.createGain();
+      tuner.boost.gain.value = TUNER_BOOST;
+      tuner.analyser = audioCtx.createAnalyser();
+      tuner.analyser.fftSize = 2048;
+      tuner.sink = audioCtx.createGain();     // silent: keeps WebKit pulling the analyser
+      tuner.sink.gain.value = 0;
+      tuner.source.connect(tuner.boost);
+      tuner.boost.connect(tuner.analyser);
+      tuner.analyser.connect(tuner.sink);
+      tuner.sink.connect(audioCtx.destination);
+      tuner.buf = new Float32Array(tuner.analyser.fftSize);
+      tunerMsg('Sing or hold a note…');
+      tunerLoop();
+    } catch (err) {
+      console.log('*** tuner mic failed', err);
+      tunerMsg(err && err.name === 'NotAllowedError'
+        ? 'Microphone access was refused. Allow it for this app in Settings, then tap Tuner again.'
+        : `Couldn't start the microphone (${err && err.name ? err.name : 'error'}).`);
+      releaseTunerMic();
+      setPlaybackAudioSession();
+    }
+  }
+
+  function releaseTunerMic() {
+    if (tuner.raf) cancelAnimationFrame(tuner.raf);
+    tuner.raf = 0;
+    try {
+      if (tuner.source) tuner.source.disconnect();
+      if (tuner.boost) tuner.boost.disconnect();
+      if (tuner.analyser) tuner.analyser.disconnect();
+      if (tuner.sink) tuner.sink.disconnect();
+    } catch (err) { /* ignore */ }
+    if (tuner.stream) tuner.stream.getTracks().forEach(tr => tr.stop());
+    tuner.stream = tuner.source = tuner.boost = tuner.analyser = tuner.sink = null;
+  }
+
+  function closeTuner() {
+    if (!tuner.on) return;
+    tuner.on = false;
+    releaseTunerMic();
+    setPlaybackAudioSession();          // back to 'playback'
+    document.getElementById('tunerPanel').hidden = true;
+    const btn = document.getElementById('tunerBtn');
+    btn.classList.remove('is-on');
+    btn.setAttribute('aria-pressed', 'false');
+  }
+
+  function resetTunerDisplay() {
+    tuner.recent = [];
+    tuner.heardAny = false;
+    document.getElementById('tunerNote').textContent = '–';
+    document.getElementById('tunerCents').textContent = '';
+    document.getElementById('tunerNeedle').hidden = true;
+    const panel = document.getElementById('tunerPanel');
+    panel.classList.remove('in-tune', 'is-stale');
+  }
+
+  // Note name for a sounding midi number, spelled for the current song's key.
+  function tunerNoteName(midi) {
+    const pc = ((midi % 12) + 12) % 12;
+    const name = `${MIXED_NAMES[pc]}${midiToOctave(midi)}`;
+    const song = currentSong();
+    return song && song.key && getDiatonicScaleNames(song.key) ? spellForKey(name, song.key) : name;
+  }
+
+  function showTunerReading(midiFloat) {
+    const nearest = Math.round(midiFloat);
+    const cents = Math.round((midiFloat - nearest) * 100);
+    const panel = document.getElementById('tunerPanel');
+    document.getElementById('tunerNote').textContent = tunerNoteName(nearest);
+    document.getElementById('tunerCents').textContent =
+      cents === 0 ? '±0¢' : (cents > 0 ? '+' : '−') + Math.abs(cents) + '¢';
+    const needle = document.getElementById('tunerNeedle');
+    needle.hidden = false;
+    needle.style.left = (50 + Math.max(-50, Math.min(50, cents))) + '%';
+    panel.classList.toggle('in-tune', Math.abs(cents) <= IN_TUNE_CENTS);
+    panel.classList.remove('is-stale');
+    return { name: tunerNoteName(nearest), cents };
+  }
+
+  function tunerLoop() {
+    if (!tuner.on || !tuner.analyser) return;
+    tuner.analyser.getFloatTimeDomainData(tuner.buf);
+    const r = detectPitch(tuner.buf, audioCtx.sampleRate, TUNER_MIN_HZ, TUNER_MAX_HZ);
+    const now = audioCtx.currentTime;
+    if (r.hz && r.clarity >= TUNER_CLARITY) {
+      const midi = 69 + 12 * Math.log2(r.hz / 440);
+      // A jump of more than a semitone starts a fresh reading (a new note).
+      if (tuner.recent.length && Math.abs(midi - tuner.recent[tuner.recent.length - 1]) > 1) tuner.recent = [];
+      tuner.recent.push(midi);
+      if (tuner.recent.length > TUNER_SMOOTH) tuner.recent.shift();
+      const sorted = tuner.recent.slice().sort((a, b) => a - b);
+      showTunerReading(sorted[Math.floor(sorted.length / 2)]);
+      tuner.lastHeard = now;
+      if (!tuner.heardAny) { tuner.heardAny = true; tunerMsg(''); }
+    } else if (tuner.heardAny && now - tuner.lastHeard > TUNER_STALE_S) {
+      // Keep the last note on screen, dimmed: at the end of a song it shows
+      // where the choir finished.
+      const panel = document.getElementById('tunerPanel');
+      if (!panel.classList.contains('is-stale')) {
+        panel.classList.add('is-stale');
+        tuner.recent = [];
+        tunerMsg('Last note heard');
+      }
+    }
+    tuner.raf = requestAnimationFrame(tunerLoop);
+  }
+
+  // Release the mic whenever the app leaves the screen.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') closeTuner();
+  });
+
   window.addEventListener('beforeunload', (e) => {
     if (isSongFormOpen() && formDirty) {
       e.preventDefault();
@@ -2239,6 +2868,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     try {
       parseCSV();
+      screenAwake.start();
     } catch (err) {
       document.body.innerHTML =
         '<pre style="white-space:pre-wrap;color:red;padding:1em;">' +
